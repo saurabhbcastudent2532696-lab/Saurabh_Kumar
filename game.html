@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>SK STAC TOE</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fjalla+One&display=swap');
+
+    :root {
+      --primary: #6a0dad;
+      --accent: #ff00aa;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Bebas Neue', sans-serif;
+      background: linear-gradient(135deg, #1a0033, #330066);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 10px;
+    }
+
+    nav {
+      background: var(--primary);
+      width: 100%;
+      max-width: 600px;
+      padding: 15px;
+      text-align: center;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    nav h1 {
+      font-size: clamp(2rem, 8vw, 3.5rem);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 25px;
+      width: 100%;
+      max-width: 620px;
+    }
+
+    .board-container {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 12px;
+      border-radius: 20px;
+      aspect-ratio: 1 / 1;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .box {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(4rem, 14vw, 7rem);
+      font-weight: bold;
+      color: #1a0033;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+      box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .box:hover {
+      background: #f0e6ff;
+      transform: scale(1.05);
+    }
+
+    .box.x { color: #00ffcc; }
+    .box.o { color: #ff00aa; }
+
+    .info-panel {
+      text-align: center;
+      width: 100%;
+    }
+
+    .info {
+      font-size: 1.6rem;
+      margin: 10px 0;
+      min-height: 50px;
+    }
+
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 14px 32px;
+      font-size: 1.4rem;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 6px 15px rgba(255, 0, 170, 0.4);
+    }
+
+    button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 20px rgba(255, 0, 170, 0.5);
+    }
+
+    /* Celebration GIF */
+    .celebration {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 180px;
+      height: 180px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+      z-index: 10;
+      border-radius: 20px;
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
+      object-fit: contain;
+    }
+
+    .win .celebration {
+      opacity: 1;
+    }
+
+    .celebration.show {
+      animation: celebrationFade 5.5s forwards;
+    }
+
+    @keyframes celebrationFade {
+      0% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    @media (max-width: 480px) {
+      .celebration {
+        width: 140px;
+        height: 140px;
+      }
+      .game-container {
+        gap: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <h1>NULL  TOE GAME </h1>
+  </nav>
+
+  <div class="game-container">
+    <div class="board-container">
+      <div id="board"></div>
+      <img src="https://media.tenor.com/DxWi4S0CAVYAAAAM/illya-illyasveil.gif" 
+           class="celebration" 
+           id="dance" 
+           alt="Winner Celebration"
+           loading="lazy">
+    </div>
+
+    <div class="info-panel">
+      <div class="info" id="status">Turn for <span id="turn">X</span></div>
+      <button id="reset">New Game</button>
+    </div>
+  </div>
+
+  <script>
+    const board = document.getElementById('board');
+    const status = document.getElementById('status');
+    const turnSpan = document.getElementById('turn');
+    const resetBtn = document.getElementById('reset');
+    const dance = document.getElementById('dance');
+
+    let currentPlayer = 'X';
+    let gameState = Array(9).fill(null);
+    let gameActive = true;
+
+    const winningConditions = [
+      [0,1,2], [3,4,5], [6,7,8],
+      [0,3,6], [1,4,7], [2,5,8],
+      [0,4,8], [2,4,6]
+    ];
+
+    function createBoard() {
+      board.innerHTML = '';
+      for (let i = 0; i < 9; i++) {
+        const box = document.createElement('div');
+        box.classList.add('box');
+        box.dataset.index = i;
+        box.addEventListener('click', handleClick);
+        board.appendChild(box);
+      }
+    }
+
+    function handleClick(e) {
+      const index = parseInt(e.target.dataset.index);
+      if (gameState[index] || !gameActive) return;
+
+      gameState[index] = currentPlayer;
+      e.target.textContent = currentPlayer;
+      e.target.classList.add(currentPlayer.toLowerCase());
+
+      if (checkWin()) {
+        status.textContent = `${currentPlayer} Wins! 🎉`;
+        dance.classList.add('win', 'show');
+        gameActive = false;
+
+        // Auto hide GIF after 5 seconds
+        setTimeout(() => {
+          dance.classList.remove('show');
+        }, 5000);
+        return;
+      }
+
+      if (gameState.every(cell => cell !== null)) {
+        status.textContent = "It's a Draw!";
+        gameActive = false;
+        return;
+      }
+
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      turnSpan.textContent = currentPlayer;
+      status.textContent = `Turn for `;
+    }
+
+    function checkWin() {
+      return winningConditions.some(condition => {
+        const [a, b, c] = condition;
+        return gameState[a] && 
+               gameState[a] === gameState[b] && 
+               gameState[a] === gameState[c];
+      });
+    }
+
+    function resetGame() {
+      gameState = Array(9).fill(null);
+      currentPlayer = 'X';
+      gameActive = true;
+      dance.classList.remove('win', 'show');
+      status.textContent = `Turn for `;
+      turnSpan.textContent = 'X';
+      createBoard();
+    }
+
+    // Initialize
+    resetBtn.addEventListener('click', resetGame);
+    createBoard();
+  </script>
+</body>
+</html>
